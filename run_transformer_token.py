@@ -5,6 +5,8 @@ import json
 import numpy as np
 import math
 from transformers import AutoTokenizer
+from transformers import AutoModelForCausalLM
+
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 import torch.nn.functional as F
 import sys
@@ -104,7 +106,7 @@ def generate_text(model, tokenizer, prompt, max_length=10, temperature=0.8, top_
     last_token = -1
     with torch.no_grad():
         for _ in range(max_length):
-            outputs = model(generated)
+            outputs = model(generated)[0]
             # print(outputs[0].shape)
             next_token_logits = outputs[0, -1, :] / temperature
             filtered_logits = top_p_filtering(next_token_logits, top_p=top_p)
@@ -152,13 +154,14 @@ d_hid = 1024  # dimension of the feedforward network model in ``nn.TransformerEn
 nlayers = 12  # number of ``nn.TransformerEncoderLayer`` in ``nn.TransformerEncoder``
 nhead = 8  # number of heads in ``nn.MultiheadAttention``
 dropout = 0.2  # dropout probability
-model = TransformerModel(ntokens, emsize, nhead, d_hid, nlayers, dropout).to(device)
-
+# model = TransformerModel(ntokens, emsize, nhead, d_hid, nlayers, dropout).to(device)
+model = AutoModelForCausalLM.from_pretrained("gpt2")
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
 
 # model.load_state_dict(torch.load("llm_token.pt", map_location=device))
 # model.load_state_dict(torch.load("llm_simple_conv_large.pt", map_location=device))
-model.load_state_dict(torch.load("llm_57m_gpt2.pt", map_location=device))
+# model.load_state_dict(torch.load("llm_57m_gpt2.pt", map_location=device))
 
 model.eval()
 
