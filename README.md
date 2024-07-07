@@ -24,14 +24,14 @@ pip install -r requirements.txt
 ## Run
 
 ```sh
-python3 run_transformer_token.py
+python3 run_transformer_token.py -i "The quick brown fox"
 ```
 
 You'll get output that looks like
 
 ```txt
 using cpu
-I am happy and glad that we were able to solve the problem in the new workplace. Having been in our union for over five
+The quick brown fox showed the same reaction as almost any other walking cat (Dig:????????) On his next step
 ```
 
 ## View the Model

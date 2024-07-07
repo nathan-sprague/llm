@@ -12,6 +12,10 @@ import torch.nn.functional as F
 import sys
 import shutil
 
+import argparse
+
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("using", device)
@@ -163,20 +167,28 @@ tokenizer = AutoTokenizer.from_pretrained("gpt2")
 # model.load_state_dict(torch.load("llm_simple_conv_large.pt", map_location=device))
 # model.load_state_dict(torch.load("llm_57m_gpt2.pt", map_location=device))
 
-model.eval()
 
-str_txt = ""
-while True:
-    # i = input(">>")
-    i = "I am happy and glad that"
-    str_txt += i
-    tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(str_txt))
-    # print("tokens", tokens)
+def main():
+    parser = argparse.ArgumentParser(description='Transformer Inference Script')
+    parser.add_argument('-i', '--input', type=str, required=True, help='Input text to replace the string')
+    
+    args = parser.parse_args()
+    input_text = args.input
 
-    l = len(str_txt)
-    with torch.set_grad_enabled(False):
-        t = generate_text(model, tokenizer, i, max_length=20, temperature=0.99, device=device)
+    model.eval()
 
-    print(t)
-   
-    break
+    str_txt = ""
+    while True:
+        i = input_text
+        str_txt += i
+        tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(str_txt))
+        
+        l = len(str_txt)
+        with torch.set_grad_enabled(False):
+            t = generate_text(model, tokenizer, i, max_length=20, temperature=0.99, device=device)
+
+        print(t)
+        break
+
+if __name__ == "__main__":
+    main()
