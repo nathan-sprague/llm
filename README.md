@@ -34,3 +34,18 @@ using cpu
 I am happy and glad that we were able to solve the problem in the new workplace. Having been in our union for over five
 ```
 
+## View the Model
+
+```sh
+pip install netron
+```
+
+```sh
+netron llm_57m_gpt2.pt
+```
+
+and open a browser to [localhost:8080](http://localhost:8080) to see the weights
+
+![Model weights](./llm_57m_gpt2.pt.png)
+
+
