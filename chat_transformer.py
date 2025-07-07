@@ -1,20 +1,18 @@
 from transformer_model_llama_june2025 import TransformerModel
 import torch
 import torch.nn.functional as F
-import os
+
 from tokenizers import ByteLevelBPETokenizer
 
 
 
-model_name = "model505m_july3_2025.pt"
-tokenizer_name = "my_tokenizer_50k_2025"
+model_name = "model_505m_july7_2025.pt"
 
-torch.manual_seed(0)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def generate_text(model, tokenizer, tokens, max_length=100, temperature=0.7, top_p=0.9,
+def generate_text(model, tokenizer, tokens, max_length=100, temperature=0.7, temperature_think=-1, top_p=0.9,
                   repetition_penalty=1.1, stream=False):
     model.clear_kv_cache()
     
@@ -31,14 +29,24 @@ def generate_text(model, tokenizer, tokens, max_length=100, temperature=0.7, top
     with torch.no_grad():
         for _ in range(max_length):
             outputs = model(generated[:, -1:], start_pos=generated.shape[1])
-            next_token_logits = outputs[0, :] / temperature
+
+            if temperature_think > 0 and thinking:
+                next_token_logits = outputs[0, :] / temperature
+            else:
+                next_token_logits = outputs[0, :] / temperature
 
             # Apply repetition penalty
+            rp = repetition_penalty
+
+            if len(last_recent_tokens) > len(set(last_recent_tokens))*3:
+                rp*=3
+                print("extra penalty")
             for token_id in set(last_recent_tokens):
                 if next_token_logits[0, token_id] > 0:
-                    next_token_logits[0, token_id] /= repetition_penalty
+                    next_token_logits[0, token_id] /= rp
                 else:
-                    next_token_logits[0, token_id] *= repetition_penalty
+                    next_token_logits[0, token_id] *= rp
+
 
             # # (Optional) prevent repeating last token explicitly
             # next_token_logits[0, last_token] -= 10
@@ -51,11 +59,15 @@ def generate_text(model, tokenizer, tokens, max_length=100, temperature=0.7, top
                 # print("PREVENTING TOKEN")
 
             # print("Gen->",generated[:, -1].item(), generated[:, -2].item())
-            if generated[:, -1].item() == think_end_token:
-                if thinking:
+            if thinking:
+                next_token_logits[0, answer_end_token] -= 1000
+                if generated[:, -1].item() == think_end_token:
                     thinking = False
             if not thinking:
                 next_token_logits[0, think_end_token] -= 1000
+
+            
+                
 
             next_token_logits = next_token_logits.squeeze()
             filtered_logits = top_p_filtering(next_token_logits, top_p=top_p)
@@ -65,7 +77,7 @@ def generate_text(model, tokenizer, tokens, max_length=100, temperature=0.7, top
             # if next_token != last_token:
             generated = torch.cat((generated, next_token.unsqueeze(0)), dim=1)
             last_recent_tokens.append(next_token.item())
-            if len(last_recent_tokens)>100:
+            if len(last_recent_tokens)>200:
                 last_recent_tokens = last_recent_tokens[1::]
             # print("next", next_token)
             last_token = next_token
@@ -107,8 +119,8 @@ ffn_dim = 4096
 dim = 1024
 
 tokenizer = ByteLevelBPETokenizer.from_file(
-    vocab_filename=os.path.join(tokenizer_name, "tokenizer_50k_2025-vocab.json"),
-    merges_filename=os.path.join(tokenizer_name, "tokenizer_50k_2025-merges.txt")
+    vocab_filename="my_tokenizer_50k_2025/tokenizer_50k_2025-vocab.json",
+    merges_filename="my_tokenizer_50k_2025/tokenizer_50k_2025-merges.txt"
 )
 
 question_end_token = 1
@@ -129,6 +141,8 @@ model.load_state_dict(torch.load(model_name, weights_only=True, map_location=dev
 conversation = []
 full_text = ""
 while True:
+    torch.manual_seed(0)
+
     prompt = input("\n>>")
 
     if len(prompt) == 0:
@@ -155,7 +169,7 @@ while True:
     # print("\ngiving->", tokenizer.decode(tokens), "\n")
 
     tokens = torch.tensor([tokens], dtype=torch.long).to(device)
-    all_tokens = generate_text(model, tokenizer, tokens, stream=True, temperature=0.3, top_p=0.9, max_length=4096, repetition_penalty=1.2) 
+    all_tokens = generate_text(model, tokenizer, tokens, stream=True, temperature=0.6, temperature_think=0.2, top_p=0.9, max_length=4096, repetition_penalty=1.2) 
 
     if all_tokens[-1] == answer_end_token:
         all_tokens = all_tokens[0:-1]
